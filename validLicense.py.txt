@@ -13,15 +13,15 @@ def send_email(file_path, expiry_date):
     body = """Location:- Pune ("""+location+""").
 
 This is an email with attachment sent from hpcadmin regarding license file in server ("""+ fname + ") expire date :- " +expiry_date
-    sender_email = "admin@autoexpr.com"
-    receiver_email = "rahul.mehto@abcd.com, daniel.kulik@abcd.com"
+    sender_email = "admin@xyz.com"
+    receiver_email = "rahul@abcd.com, pulkit.kulik@abcd.com"
 
     # Create a multipart message and set headers
     message = MIMEMultipart()
     message["From"] = sender_email
     message["To"] = receiver_email
     message["Subject"] = subject
-    #message["Cc"] = "sanjay.handore-ext@abcd.com, akshay.janokar@abcd.com, apalk2@abcd.com" #Recommended for mass emails
+    #message["Cc"] = "sanjay@abcd.com, akshay@abcd.com, apalk2@abcd.com" #Recommended for mass emails
     message["Cc"] = "SysAdmins@abcd.com" #Recommended for mass emails
 
     # Add body to email

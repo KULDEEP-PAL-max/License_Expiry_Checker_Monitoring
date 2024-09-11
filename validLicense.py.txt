@@ -1,0 +1,141 @@
+import email, smtplib, os, subprocess, datetime
+
+from email import encoders
+from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+def send_email(file_path, expiry_date):
+    file_location = file_path
+    fname = os.path.basename(file_location)  # In same directory as script
+    location= os.uname()[1]
+    subject = "An email with expire license file "+ fname +" attached."
+    body = """Location:- Pune ("""+location+""").
+
+This is an email with attachment sent from hpcadmin regarding license file in server ("""+ fname + ") expire date :- " +expiry_date
+    sender_email = "admin@autoexpr.com"
+    receiver_email = "rahul.mehto@abcd.com, daniel.kulik@abcd.com"
+
+    # Create a multipart message and set headers
+    message = MIMEMultipart()
+    message["From"] = sender_email
+    message["To"] = receiver_email
+    message["Subject"] = subject
+    #message["Cc"] = "sanjay.handore-ext@abcd.com, akshay.janokar@abcd.com, apalk2@abcd.com" #Recommended for mass emails
+    message["Cc"] = "SysAdmins@abcd.com" #Recommended for mass emails
+
+    # Add body to email
+    message.attach(MIMEText(body, "plain"))
+    # print(filename)
+    try:
+        # Open file
+        with open(file_location, "r") as attachment:
+            # Add file as application/octet-stream
+            # Email client can usually download this automatically as attachment
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(attachment.read())
+
+        # Encode file in ASCII characters to send by email
+        encoders.encode_base64(part)
+
+        # Add header as key/value pair to attachment part
+        #part.add_header(
+        #    "Content-Disposition",
+        #    f"attachment; filename= {filename}",
+        #)
+        part.add_header(
+             "Content-Disposition",
+             "attachment",filename=fname)
+
+        # Add attachment to message and convert message to string
+        message.attach(part)
+        text = message.as_string()
+
+        # Log in to server using secure context and send email
+        s = smtplib.SMTP('localhost')
+        s.send_message(message, text)
+    except Exception as e:
+
+        text = message.as_string()
+
+        # Log in to server using secure context and send email
+        s = smtplib.SMTP('localhost')
+        s.send_message(message, text)
+
+    if True:
+        print("Mail sent..")
+    else:
+        print("Error..")
+    s.quit()
+
+def check_license_expiry_Adient(file_name):
+    # Read data from the file
+    with open(file_name, 'r') as f:
+        file_data = f.read().splitlines()
+    # store vendor and expriry date of a product
+    vendor_name_list = []
+    expiry_date_list = []
+    # Iterate thorough  file_data lines
+    for line in file_data:
+        if "# VENDOR PRODUCT" in line:
+            vendor_name_list.append(line[len("# VENDOR PRODUCT "):])
+        elif "        END" in line:
+            expiry_date_list.append(line[len('        END: '):])
+        elif "FEATURE" in line:
+            temp_data_list = line.split(" ")
+            vendor_name_list.append(temp_data_list[1])
+            expiry_date_list.append(temp_data_list[4])
+        # else:
+        #     pass
+    # store vendor and expiry date in terms of key and values.
+    dict_vendor_expiry_nd = dict(zip(vendor_name_list, expiry_date_list))
+    dict2_vendor_expiry_nd = {}  # store expiry date as key and vendor_name list as value.
+    for x in list(set(expiry_date_list)):
+        temp = []
+        for y in dict_vendor_expiry_nd.keys():
+            if x == dict_vendor_expiry_nd[y]:
+                temp.append(y)
+        dict2_vendor_expiry_nd[x] = temp
+
+    #  verifying expiry date for each vendor
+    for exp_date in dict2_vendor_expiry_nd.keys():
+        #if "simulialm.lic" in file_path.lower() or "femzip-lpe_adient_india" in file_path.lower():
+        if "5cba2c403a48_ABQ43876_0000_1.LIC" in file_path.lower() or "femzip-lpe_adient_india" in file_path.lower():
+            date_obj = datetime.datetime.strptime(exp_date, '%d-%b-%Y')
+        elif "humanetics_license" in file_path.lower() or "lic_biorid_adient_pune" in file_path.lower():
+            date_obj = datetime.datetime.strptime(exp_date, '%m/%d/%Y')
+            no_day = date_obj - datetime.datetime.now()
+
+        # print(no_day)
+            if no_day.days + 1 in [30, 23, 16, 9, 4, 3, 2, 1, 0]:
+                try:
+                    send_email(file_name, exp_date)  # call send mail function
+                except IOError as e:
+                    print(e)
+def get_expiry_date_command(command_path):
+    process = subprocess.Popen(command_path, shell=True, stdout=subprocess.PIPE)
+    output, _ = process.communicate()
+    #date_obj = datetime.datetime.strptime("11/27/2023", '%m/%d/%Y')
+    date_obj = datetime.datetime.strptime(output[-11:-1].decode('utf-8'), '%m/ %d/%Y')
+    no_day = date_obj - datetime.datetime.now()
+    #print(date_obj,end="\n")
+    if no_day.days + 1 in [30, 23, 16, 9, 4, 3, 2, 1, 0]:
+        try:
+            send_email(command_path, output[-11:-1].decode('utf-8'))# call send mail function
+        except IOError as e:
+            print(e)
+
+if __name__ == '__main__':
+    # Define file paths in list
+   # file_path_list = ["simulialm.lic","FEMZIP-LPE_Adient_India_Pvt._Ltd._5295_03-mar-2024.lic","Humanetics_License_2023-09-26-181146_Valid_SEP_30_2024.txt","Lic_BioRID_Adient_Pune_09262023_09302024"]
+
+    #file_path_list = ["/apps/license/abaqus/flexlm/linux_a64/code/bin/simulialm.lic","/apps/license/femzip/FEMZIP-LPE_Adient_India_Pvt._Ltd._5295_03-mar-2024.lic","/apps/license/lsdyna/VENDOR/Lic_BioRID_Adient_Pune_09262023_09302024","/apps/license/lsdyna/VENDOR/Humanetics_License_2023-09-26-181146_Valid_SEP_30_2024.txt","/FEA_Europe/DATABASE/.asg/bin/HPC2_Scripts/installation/byteswap.lnx -expire"]
+    file_path_list = ["/apps/license/abaqus/linux_a64/code/bin/5cba2c403a48_ABQ43876_0000_1.LIC","/apps/license/femzip/FEMZIP-LPE_Adient_India_Pvt._Ltd._6196_03-mar-2025.lic","/apps/license/lsdyna/VENDOR/Humanetics_License_2024-03-27-114833_Valid_SEP_30_2024.txt","/apps/license/lsdyna/VENDOR/Lic_BioRID_Adient_IN-newIDs_05072024_09302024"]
+    # add one by one file path in function
+    for file_path in file_path_list:
+        if os.path.exists(file_path):
+            check_license_expiry_Adient(file_path)
+        elif "/byteswap.lnx -expire" in file_path.lower():
+            get_expiry_date_command(file_path)
+        else:
+             print("file path doen\'t exist or this file not automated!")
